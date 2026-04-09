@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - rc/*
+      - 1.x
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release-npm:
+    name: Release to NPM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      - name: Validate
+        run: |
+          yarn lint:ci
+      - name: Build
+        run: |
+          yarn build:ci
+      - name: Update command docs
+        run: yarn oclif:readme
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          file_pattern: 'docs/commands.md'
+          commit_message: 'docs(auto): Update docs/commands.md'
+      - name: Semantic Release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
