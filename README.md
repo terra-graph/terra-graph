@@ -41,10 +41,10 @@ This probably won't be sufficient for most projects though. See "How to properly
 
 ### Step 2
 
-Use the `terra-graph` `create` command to parse the graph, apply some default formatting / filtering and output a (hopefully) beautiful diagram:
+Use `terra-graph diagram:from-dot` to parse the graph, apply formatting/filtering, and output a diagram:
 
 ```bash
-cat graph.txt | terra-graph create
+cat graph.txt | terra-graph diagram:from-dot
 ```
 
 This will use the default settings to generate an image called `terra-graph.png` in the location you ran the command.
@@ -55,42 +55,43 @@ This will use the default settings to generate an image called `terra-graph.png`
 terra-graph [command] --help
 ```
 
-## How to properly generate the initial graph using `terra-graph terraform:graph`
+## Recommended Terraform-first flow using `terra-graph diagram`
 
 In most projects you will be using a state file of some kind to manage the changes in your infrastructure. What `terraform graph` actually does is generat a graph of what actions it needs to complete (and in what order). Unless you are running `terra-graph` on brand new infrastructure it won't generate an accurate diagram as it will be using the diff of what new changes are needed. You also will likely have custom backend configuration (that might require credentials etc) for your terraform state.
 
-To overcome this `terra-graph` has a command that will generate an isolated brand new graph without touching or going anywhere near your state or backend config.
+To overcome this, `terra-graph` provides a command that runs a no-backend Terraform init and then attempts a best-effort plan-decorated render.
 
 ```bash
-terra-graph terraform:graph
+terra-graph diagram --profile edf.aws.dot
 ```
 
-This will create an override file for the file that contains your `backend {}` config block and then run `terraform init` and `terraform graph`. By default it expects the `backend {}` block to live in `terraform.tf` but that can be configured:
+This runs:
+- `terraform init -backend=false -input=false`
+- `terraform plan -refresh=false -lock=false -input=false -out=<temp>/terra-graph.tfplan`
+- `terraform graph -plan=<temp>/terra-graph.tfplan`
+- `terraform show -json <temp>/terra-graph.tfplan`
+
+By default `terra-graph` runs Terraform with `TF_DATA_DIR` in an OS temp workspace and writes the plan artifact to OS temp as well (unless you pass `--plan-file`).
+
+If plan/show fails (for example provider/data-source credential constraints), it falls back to plain `terraform graph` and still renders.
+
+If you want graph-only mode (no plan/show step):
 
 ```bash
-# (it still expects the file to have a .tf extension)
-terra-graph terraform:graph --backendFile=backend.tf
-```
-
-This command can then be sent to `terra-graph create` as normal:
-
-```bash
-terra-graph terraform:graph | terra-graph create
+terra-graph diagram --no-plan --profile edf.aws.dot
 ```
 
 ## Quick Start Use
 
 ```bash
-# generate the graph from a brand new state
-terra-graph terraform:graph > mygraph.txt
-# send that graph to terra-graph
-cat mygraph.txt | terra-graph create
+# generate the graph from terraform and render in one command
+terra-graph diagram --profile edf.aws.dot
 ```
 
 Or more simply:
 
 ```bash
-terra-graph terraform:graph | terra-graph create
+terraform graph | terra-graph diagram:from-dot --profile edf.aws.dot
 ```
 
 ## Detailed Documentation
