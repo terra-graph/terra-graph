@@ -15,11 +15,11 @@ export default class Diagram extends Command {
     'Generate and render a Terraform diagram in one command';
 
   static override examples = [
-    '<%= config.bin %> <%= command.id %> --profile my-profile --output "renderer=dot;outWriter=file;outFile=./diagram.dot"',
-    '<%= config.bin %> <%= command.id %> --terraform-dir ./infra --profile my-profile --output "renderer=dot;transformers=dotcli;outWriter=file;outFile=./diagram.png" --transformer-dotcli-format png',
-    '<%= config.bin %> <%= command.id %> --no-plan --profile my-profile --output "renderer=json;outWriter=file;outFile=./tggraph.json"',
-    '<%= config.bin %> <%= command.id %> --runtimeConfigFile ./my-config.yml --output "renderer=dot;outWriter=file;outFile=./diagram.dot"',
-    '<%= config.bin %> <%= command.id %> --plan-file ./my-debug.tfplan --skip-cleanup --output "renderer=dot;outWriter=file;outFile=./diagram.dot"',
+    '<%= config.bin %> <%= command.id %> --runtimeConfigFile ./my-config.yml',
+    '<%= config.bin %> <%= command.id %> --terraform-dir ./infra --runtimeConfigFile ./my-config.yml --transformer-dotcli-format png',
+    '<%= config.bin %> <%= command.id %> --no-plan --runtimeConfigFile ./my-config.yml',
+    '<%= config.bin %> <%= command.id %> --profile my-profile --runtimeConfigFile ./my-config.yml',
+    '<%= config.bin %> <%= command.id %> --plan-file ./my-debug.tfplan --skip-cleanup --runtimeConfigFile ./my-config.yml',
   ];
 
   static override flags = {

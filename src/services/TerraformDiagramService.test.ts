@@ -48,7 +48,6 @@ describe('TerraformDiagramService.run', () => {
       flags: {
         verbose: false,
         continueOnError: false,
-        output: ['renderer=dot;outWriter=stdout'],
       },
       usePlan: true,
       cwd: '/tmp',
@@ -106,7 +105,6 @@ describe('TerraformDiagramService.run', () => {
       flags: {
         verbose: false,
         continueOnError: false,
-        output: ['renderer=dot;outWriter=stdout'],
       },
       usePlan: true,
       planFile: '.terraform/terra-graph.tfplan',
@@ -157,7 +155,6 @@ describe('TerraformDiagramService.run', () => {
       flags: {
         verbose: false,
         continueOnError: false,
-        output: ['renderer=dot;outWriter=stdout'],
       },
       usePlan: true,
       planFile: '.terraform/terra-graph.tfplan',
@@ -204,7 +201,6 @@ describe('TerraformDiagramService.run', () => {
       flags: {
         verbose: false,
         continueOnError: false,
-        output: ['renderer=dot;outWriter=stdout'],
       },
       usePlan: false,
       skipCleanup: false,

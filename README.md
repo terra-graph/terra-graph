@@ -44,10 +44,10 @@ This probably won't be sufficient for most projects though. See "How to properly
 Use `terra-graph diagram:from-dot` to parse the graph, apply formatting/filtering, and output a diagram:
 
 ```bash
-cat graph.txt | terra-graph diagram:from-dot
+cat graph.txt | terra-graph diagram:from-dot --runtimeConfigFile ./terra-graph.runtime.yml
 ```
 
-This will use the default settings to generate an image called `terra-graph.png` in the location you ran the command.
+The runtime config controls `run.outputs`, including renderer and writer selection.
 
 ### Help
 
@@ -62,7 +62,7 @@ In most projects you will be using a state file of some kind to manage the chang
 To overcome this, `terra-graph` provides a command that runs a no-backend Terraform init and then attempts a best-effort plan-decorated render.
 
 ```bash
-terra-graph diagram --profile edf.aws.dot
+terra-graph diagram --profile edf.aws.dot --runtimeConfigFile ./terra-graph.runtime.yml
 ```
 
 This runs:
@@ -78,20 +78,20 @@ If plan/show fails (for example provider/data-source credential constraints), it
 If you want graph-only mode (no plan/show step):
 
 ```bash
-terra-graph diagram --no-plan --profile edf.aws.dot
+terra-graph diagram --no-plan --profile edf.aws.dot --runtimeConfigFile ./terra-graph.runtime.yml
 ```
 
 ## Quick Start Use
 
 ```bash
 # generate the graph from terraform and render in one command
-terra-graph diagram --profile edf.aws.dot
+terra-graph diagram --profile edf.aws.dot --runtimeConfigFile ./terra-graph.runtime.yml
 ```
 
 Or more simply:
 
 ```bash
-terraform graph | terra-graph diagram:from-dot --profile edf.aws.dot
+terraform graph | terra-graph diagram:from-dot --profile edf.aws.dot --runtimeConfigFile ./terra-graph.runtime.yml
 ```
 
 ## Detailed Documentation

@@ -9,46 +9,36 @@ import { ArtifactTransformer } from '@terra-graph/core/Output/ArtifactTransforme
 import { ArtifactTransformerFactory } from '@terra-graph/core/Output/ArtifactTransformerFactory.js';
 import { DefaultArtifactTransformerFactory } from '@terra-graph/core/Output/ArtifactTransformerFactory/DefaultArtifactTransformerFactory.js';
 import { OclifTransformerFlagParser } from '@terra-graph/core/Output/ArtifactTransformerFactory/OclifTransformerFlagParser.js';
-import {
-  ArtifactWriteInput,
-  ArtifactWriter,
-} from '@terra-graph/core/Output/ArtifactWriter.js';
-import { FileArtifactWriter } from '@terra-graph/core/Output/ArtifactWriter/FileArtifactWriter.js';
-import { StdoutArtifactWriter } from '@terra-graph/core/Output/ArtifactWriter/StdoutArtifactWriter.js';
 import { RenderPipeline } from '@terra-graph/core/Output/RenderPipeline.js';
 import { RuntimeCatalog } from '@terra-graph/core/Runtime/RuntimeCatalog.js';
 import { RuntimeConfigLoader } from '@terra-graph/core/Runtime/RuntimeConfigLoader.js';
 import { FileRuntimeConfigSource } from '@terra-graph/core/Runtime/RuntimeConfigSource/FileRuntimeConfigSource.js';
-import { defaultRendererRegistry } from '../config/renderers.js';
 import {
   defaultRuntimeCatalog,
   defaultRuntimeProvider,
 } from '../config/runtime.js';
-
-export type OutputWriterMode = 'stdout' | 'file';
 
 export type RenderCommandFlags = {
   verbose: boolean;
   continueOnError: boolean;
   runtimeConfigFile?: string;
   profile?: string;
-  output?: string[];
 };
 
 type RenderOutputPlan = {
   rendererName?: string;
   rendererOptions?: Record<string, unknown>;
   transformerNames: string[];
-  outputWriter: OutputWriterMode;
-  outFile?: string;
+  writerName: string;
+  writerOptions?: Record<string, unknown>;
 };
 
 type RuntimeRenderOutputConfig = {
   renderer?: string;
   options?: Record<string, unknown>;
   transformers?: string[];
-  outWriter?: OutputWriterMode;
-  outFile?: string;
+  writer: string;
+  writerOptions?: Record<string, unknown>;
 };
 
 export const sharedRenderFlags = {
@@ -73,12 +63,6 @@ export const sharedRenderFlags = {
     required: false,
     description:
       'Profile name to resolve from the runtime catalog (overrides runtime config run.profile)',
-  }),
-  output: Flags.string({
-    required: false,
-    multiple: true,
-    description:
-      "Optional output spec (repeatable): 'renderer=<id>;transformers=<t1,t2>;outWriter=<stdout|file>;outFile=<path>'.",
   }),
 };
 
@@ -149,10 +133,7 @@ export class GraphRenderService {
         profileName,
       );
 
-    const outputPlans = this.resolveOutputPlans(
-      request.flags,
-      runtimeRunOutputs,
-    );
+    const outputPlans = this.resolveOutputPlans(runtimeRunOutputs);
     const renderedArtifactByRenderer = new Map<string, RenderArtifact>();
 
     for (const outputPlan of outputPlans) {
@@ -172,7 +153,7 @@ export class GraphRenderService {
       let artifact = renderedArtifactByRenderer.get(renderKey);
       if (!artifact) {
         const renderer = resolvedRendererName
-          ? defaultRendererRegistry.resolve(
+          ? catalog.resolveRenderer(
               resolvedRendererName,
               resolved,
               rendererOptions as Record<string, unknown> | undefined,
@@ -190,16 +171,15 @@ export class GraphRenderService {
         transformerOptionsByName,
       );
 
-      const output = this.resolveOutputWriter(
-        outputPlan.outputWriter,
-        outputPlan.outFile,
-        request.fail,
+      const writer = catalog.resolveWriter(
+        outputPlan.writerName,
+        outputPlan.writerOptions,
       );
 
       await this.pipeline.execute({
         artifact,
-        writer: output.writer,
-        write: output.write,
+        writer,
+        write: {},
         transformers,
       });
     }
@@ -276,15 +256,8 @@ export class GraphRenderService {
   }
 
   private resolveOutputPlans(
-    flags: RenderCommandFlags,
     runtimeOutputs?: RuntimeRenderOutputConfig[],
   ): RenderOutputPlan[] {
-    if (flags.output && flags.output.length > 0) {
-      return flags.output.map((value, index) =>
-        this.parseOutputPlan(value, index + 1),
-      );
-    }
-
     if (runtimeOutputs && runtimeOutputs.length > 0) {
       return runtimeOutputs.map((output, index) =>
         this.normalizeRuntimeOutputPlan(output, index + 1),
@@ -292,89 +265,18 @@ export class GraphRenderService {
     }
 
     throw new Error(
-      "No output resolved. Provide '--output' specs or define run.outputs in the runtime config.",
+      "No output resolved. Define 'run.outputs' in the runtime config file.",
     );
-  }
-
-  private parseOutputPlan(value: string, index: number): RenderOutputPlan {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      throw new Error(`Output spec #${index} is empty.`);
-    }
-
-    const plan: Partial<RenderOutputPlan> = {};
-    const pairs = trimmed
-      .split(';')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-
-    if (pairs.length === 0) {
-      throw new Error(`Output spec #${index} is invalid: '${value}'.`);
-    }
-
-    for (const pair of pairs) {
-      const equalsAt = pair.indexOf('=');
-      if (equalsAt <= 0) {
-        throw new Error(
-          `Output spec #${index} segment '${pair}' is invalid. Expected key=value.`,
-        );
-      }
-
-      const key = pair.slice(0, equalsAt).trim().toLowerCase();
-      const raw = pair.slice(equalsAt + 1).trim();
-
-      switch (key) {
-        case 'renderer':
-          plan.rendererName = raw || undefined;
-          break;
-        case 'transformer':
-        case 'transformers':
-          plan.transformerNames = raw
-            ? raw
-                .split(',')
-                .map((token) => token.trim())
-                .filter((token) => token.length > 0)
-            : [];
-          break;
-        case 'outwriter':
-          if (raw.toLowerCase() !== 'stdout' && raw.toLowerCase() !== 'file') {
-            throw new Error(
-              `Output spec #${index} has invalid outWriter '${raw}'. Use 'stdout' or 'file'.`,
-            );
-          }
-          plan.outputWriter = raw.toLowerCase() as OutputWriterMode;
-          break;
-        case 'outfile':
-          plan.outFile = raw || undefined;
-          break;
-        default:
-          throw new Error(
-            `Output spec #${index} has unknown key '${key}'. Allowed keys: renderer, transformers, outWriter, outFile.`,
-          );
-      }
-    }
-
-    const outFile = plan.outFile;
-    const outputWriter = plan.outputWriter ?? (outFile ? 'file' : 'stdout');
-
-    return {
-      rendererName: plan.rendererName,
-      transformerNames: plan.transformerNames ?? [],
-      outputWriter,
-      outFile,
-    };
   }
 
   private normalizeRuntimeOutputPlan(
     output: RuntimeRenderOutputConfig,
     index: number,
   ): RenderOutputPlan {
-    const outWriter = output.outWriter;
-    const outFile = output.outFile;
-    const outputWriter = outWriter ?? (outFile ? 'file' : 'stdout');
-    if (outputWriter !== 'stdout' && outputWriter !== 'file') {
+    const writerName = output.writer.trim();
+    if (!writerName) {
       throw new Error(
-        `Runtime run.outputs[${index}] has invalid outWriter '${String(outWriter)}'. Use 'stdout' or 'file'.`,
+        `Runtime run.outputs[${index}] must define a non-empty writer.`,
       );
     }
 
@@ -382,8 +284,8 @@ export class GraphRenderService {
       rendererName: output.renderer,
       rendererOptions: output.options,
       transformerNames: output.transformers ?? [],
-      outputWriter,
-      outFile,
+      writerName,
+      writerOptions: output.writerOptions,
     };
   }
 
@@ -414,35 +316,6 @@ export class GraphRenderService {
         ([key, item]) => `${JSON.stringify(key)}:${this.stableStringify(item)}`,
       )
       .join(',')}}`;
-  }
-
-  private resolveOutputWriter(
-    outputWriter: OutputWriterMode,
-    outFile: string | undefined,
-    fail: (error: Error | string) => never,
-  ): {
-    writer: ArtifactWriter;
-    write: Omit<ArtifactWriteInput, 'artifact'>;
-  } {
-    if (outputWriter === 'file') {
-      if (!outFile) {
-        fail(
-          "Missing '--outFile'. Provide a file path when '--outWriter=file' is used.",
-        );
-      }
-
-      return {
-        writer: new FileArtifactWriter(),
-        write: {
-          target: outFile,
-        },
-      };
-    }
-
-    return {
-      writer: new StdoutArtifactWriter(),
-      write: {},
-    };
   }
 
   private loggerFactory(

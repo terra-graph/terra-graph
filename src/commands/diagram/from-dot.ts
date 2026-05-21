@@ -17,8 +17,8 @@ export default class DiagramFromDot extends Command {
   static override description = 'Render a diagram from Terraform DOT input';
 
   static override examples = [
-    '<%= config.bin %> <%= command.id %> --dot-input ./graph.dot --profile my-profile --output "renderer=dot;outWriter=file;outFile=./diagram.dot"',
-    'terraform graph | <%= config.bin %> <%= command.id %> --profile my-profile --output "renderer=dot;transformers=dotcli;outWriter=file;outFile=./diagram.png" --transformer-dotcli-format png',
+    '<%= config.bin %> <%= command.id %> --dot-input ./graph.dot --runtimeConfigFile ./my-config.yml',
+    'terraform graph | <%= config.bin %> <%= command.id %> --runtimeConfigFile ./my-config.yml --transformer-dotcli-format png',
   ];
 
   static override flags = {
