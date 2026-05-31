@@ -225,3 +225,36 @@ describe('TerraformDiagramService.run', () => {
     );
   });
 });
+
+describe('TerraformDiagramService.decorateImportedGraph', () => {
+  it('decorates an already-imported graph when plan json is provided', async () => {
+    const decoratedGraph = {
+      ...baseGraph,
+      description: {
+        decorated: 'yes',
+      },
+    };
+    const decorator = {
+      decorate: jest.fn().mockReturnValue(decoratedGraph),
+    };
+
+    const service = new TerraformDiagramService(
+      undefined as never,
+      undefined as never,
+      undefined as never,
+      async () => decorator as never,
+    );
+
+    const result = await service.decorateImportedGraph(
+      baseGraph as never,
+      '{"planned_values":{"root_module":{"resources":[]}}}',
+      jest.fn(),
+    );
+
+    expect(decorator.decorate).toHaveBeenCalledWith(
+      baseGraph,
+      '{"planned_values":{"root_module":{"resources":[]}}}',
+    );
+    expect(result).toBe(decoratedGraph);
+  });
+});

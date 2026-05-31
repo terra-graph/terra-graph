@@ -80,13 +80,21 @@ export class TerraformDiagramService {
     warn: (message: string) => void,
   ): Promise<TgGraph> {
     const tgGraph = this.importer.fromString(result.dot);
-    if (!result.planShowJson) {
+    return this.decorateImportedGraph(tgGraph, result.planShowJson, warn);
+  }
+
+  public async decorateImportedGraph(
+    tgGraph: TgGraph,
+    planShowJson: string | undefined,
+    warn: (message: string) => void,
+  ): Promise<TgGraph> {
+    if (!planShowJson) {
       return tgGraph;
     }
 
     try {
       const decorator = await this.createPlanDecorator();
-      return decorator.decorate(tgGraph, result.planShowJson);
+      return decorator.decorate(tgGraph, planShowJson);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       warn(
