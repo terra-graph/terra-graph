@@ -123,7 +123,7 @@ export class GraphRenderService {
       logger: this.loggerFactory(request.flags.verbose, request.log),
     });
 
-    const resolved = resolver.resolve({
+    const resolved = await this.resolveGraph(resolver, {
       graph: request.tgGraph,
       phases: catalog.resolveProfilePhases(profileName),
     });
@@ -198,6 +198,23 @@ export class GraphRenderService {
     }
 
     return GraphRenderService.mergeOptions(profileOptions, runtimeRunOptions);
+  }
+
+  private async resolveGraph(
+    resolver: GraphResolver,
+    input: Parameters<GraphResolver['resolve']>[0],
+  ): Promise<AdapterOperations> {
+    const asyncResolver = resolver as GraphResolver & {
+      resolveAsync?: (
+        input: Parameters<GraphResolver['resolve']>[0],
+      ) => Promise<AdapterOperations>;
+    };
+
+    if (asyncResolver.resolveAsync) {
+      return asyncResolver.resolveAsync(input);
+    }
+
+    return resolver.resolve(input);
   }
 
   private static mergeOptions(
@@ -337,13 +354,34 @@ export class GraphRenderService {
   ): (error: Error) => void {
     if (!continueOnError) {
       return (error: Error) => {
-        fail(error);
+        fail(this.withCauseChain(error));
       };
     }
 
     return (error: Error) => {
-      console.error(error);
+      console.error(this.withCauseChain(error));
     };
+  }
+
+  private withCauseChain(error: Error): Error {
+    const messages = this.causeMessages(error);
+    if (messages.length <= 1) {
+      return error;
+    }
+
+    return new Error(messages.join('\nCaused by: '), { cause: error });
+  }
+
+  private causeMessages(error: Error): string[] {
+    const messages: string[] = [];
+    let current: unknown = error;
+
+    while (current instanceof Error) {
+      messages.push(current.message);
+      current = current.cause;
+    }
+
+    return messages;
   }
 
   private resolveAdapter(

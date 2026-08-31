@@ -119,6 +119,100 @@ describe('GraphRenderService.render', () => {
     }
   });
 
+  it('shoud include rule failure causes in failed render errors', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'graph-render-service-'));
+    const providerPath = join(dir, 'provider.cjs');
+    const runtimeConfigPath = join(dir, 'runtime.json');
+    const coreModulePath = JSON.stringify(
+      join(process.cwd(), 'node_modules/@terra-graph/core/dist/cjs/index.js'),
+    );
+
+    await writeFile(
+      providerPath,
+      `const { GraphPlugin, GraphPluginRegistry, NodeRule } = require(${coreModulePath});
+class ExplodingRule extends NodeRule {
+  constructor() {
+    super({ node: { any: true } });
+  }
+
+  apply() {
+    throw new Error('inner rule failure');
+  }
+}
+NodeRule.register(ExplodingRule);
+
+class ExplodingPlugin extends GraphPlugin {
+  constructor() {
+    super('explode');
+  }
+
+  build() {
+    return {
+      phases: [
+        {
+          phase: 'main',
+          rules: [new ExplodingRule()],
+        },
+      ],
+    };
+  }
+}
+
+module.exports = () => ({
+  plugins: new GraphPluginRegistry({
+    explode: new ExplodingPlugin(),
+  }),
+});`,
+      'utf8',
+    );
+
+    await writeFile(
+      runtimeConfigPath,
+      JSON.stringify({
+        providers: ['./provider.cjs'],
+        profiles: {
+          base: {
+            plugins: [
+              {
+                plugin: 'explode',
+              },
+            ],
+          },
+        },
+        run: {
+          profile: 'base',
+          outputs: [
+            {
+              renderer: 'json',
+              writer: 'stdout',
+            },
+          ],
+        },
+      }),
+      'utf8',
+    );
+
+    try {
+      await expect(
+        new GraphRenderService().render({
+          tgGraph: baseGraph,
+          argv: [],
+          flags: {
+            verbose: false,
+            continueOnError: false,
+            runtimeConfigFile: runtimeConfigPath,
+          },
+          log: jest.fn(),
+          fail: throwFail,
+        }),
+      ).rejects.toThrow(
+        'Rule was unable to modify node n1\nCaused by: inner rule failure',
+      );
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('loads external renderers and writers from runtime providers', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'graph-render-service-'));
     const providerPath = join(dir, 'provider.cjs');
