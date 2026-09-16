@@ -8,12 +8,15 @@ import {
   TerraformDiagramRunResult,
   TerraformGraphService,
 } from './TerraformGraphService.js';
+import type { TgGraphMetadata } from './TopologyMetadataBuilder.js';
 
 type TerraformPlanDecorator = {
   decorate(graph: Readonly<TgGraph>, input: string): TgGraph;
 };
 
 type TerraformPlanDecoratorFactory = () => Promise<TerraformPlanDecorator>;
+type TerraformPlanChangesDecoratorFactory =
+  () => Promise<TerraformPlanDecorator>;
 
 export type TerraformDiagramServiceRequest = {
   argv: string[];
@@ -21,6 +24,8 @@ export type TerraformDiagramServiceRequest = {
   usePlan: boolean;
   cwd?: string;
   planFile?: string;
+  changePlanShowJson?: string;
+  metadata?: TgGraphMetadata;
   skipCleanup: boolean;
   log: (message: string) => void;
   warn: (message: string) => void;
@@ -47,6 +52,21 @@ export class TerraformDiagramService {
 
       return new loaded.TfPlanDecorator();
     },
+    private readonly createPlanChangesDecorator: TerraformPlanChangesDecoratorFactory = async () => {
+      const modulePath =
+        '@terra-graph/core/Graph/Decorators/TfPlanChangesDecorator.js';
+      const loaded = (await import(modulePath)) as {
+        TfPlanChangesDecorator?: new () => TerraformPlanDecorator;
+      };
+
+      if (!loaded.TfPlanChangesDecorator) {
+        throw new Error(
+          `Core module '${modulePath}' did not export TfPlanChangesDecorator`,
+        );
+      }
+
+      return new loaded.TfPlanChangesDecorator();
+    },
   ) {}
 
   public async run(request: TerraformDiagramServiceRequest): Promise<void> {
@@ -65,11 +85,16 @@ export class TerraformDiagramService {
           }),
         };
 
-    const tgGraph = await this.decorateGraph(result, request.warn);
+    const tgGraph = await this.decorateGraph(
+      result,
+      request.changePlanShowJson,
+      request.warn,
+    );
     await this.renderService.render({
       tgGraph,
       argv: request.argv,
       flags: request.flags,
+      metadata: request.metadata,
       log: request.log,
       fail: request.fail,
     });
@@ -77,30 +102,51 @@ export class TerraformDiagramService {
 
   private async decorateGraph(
     result: TerraformDiagramRunResult,
+    changePlanShowJson: string | undefined,
     warn: (message: string) => void,
   ): Promise<TgGraph> {
     const tgGraph = this.importer.fromString(result.dot);
-    return this.decorateImportedGraph(tgGraph, result.planShowJson, warn);
+    return this.decorateImportedGraph(
+      tgGraph,
+      result.planShowJson,
+      warn,
+      changePlanShowJson,
+    );
   }
 
   public async decorateImportedGraph(
     tgGraph: TgGraph,
     planShowJson: string | undefined,
     warn: (message: string) => void,
+    changePlanShowJson?: string,
   ): Promise<TgGraph> {
-    if (!planShowJson) {
-      return tgGraph;
+    let decoratedGraph = tgGraph;
+
+    if (planShowJson) {
+      try {
+        const decorator = await this.createPlanDecorator();
+        decoratedGraph = decorator.decorate(decoratedGraph, planShowJson);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        warn(
+          `Terraform plan output could not be applied as node decoration; continuing with DOT-only graph: ${message}`,
+        );
+      }
+    }
+
+    if (!changePlanShowJson) {
+      return decoratedGraph;
     }
 
     try {
-      const decorator = await this.createPlanDecorator();
-      return decorator.decorate(tgGraph, planShowJson);
+      const decorator = await this.createPlanChangesDecorator();
+      return decorator.decorate(decoratedGraph, changePlanShowJson);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       warn(
-        `Terraform plan output could not be applied as node decoration; continuing with DOT-only graph: ${message}`,
+        `Terraform change plan output could not be applied as graph change evidence; continuing without change evidence: ${message}`,
       );
-      return tgGraph;
+      return decoratedGraph;
     }
   }
 }

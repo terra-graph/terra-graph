@@ -24,6 +24,7 @@ export default class DiagramFromDot extends Command {
     '<%= config.bin %> <%= command.id %> --dot-input ./graph.dot --runtimeConfigFile ./my-config.yml',
     '<%= config.bin %> <%= command.id %> --dot-input ./graph.dot --plan-file ./plan.tfplan --runtimeConfigFile ./my-config.yml',
     '<%= config.bin %> <%= command.id %> --dot-input ./graph.dot --plan-json-file ./plan.json --runtimeConfigFile ./my-config.yml',
+    '<%= config.bin %> <%= command.id %> --dot-input ./graph.dot --plan-json-file ./topology-plan.json --change-plan-json-file ./change-plan.json --runtimeConfigFile ./my-config.yml',
     'terraform graph | <%= config.bin %> <%= command.id %> --runtimeConfigFile ./my-config.yml --transformer-dotcli-format png',
   ];
 
@@ -43,6 +44,11 @@ export default class DiagramFromDot extends Command {
       required: false,
       description:
         'Optional path to pre-generated Terraform plan JSON from `terraform show -json`. When provided, the command applies plan-based decoration directly without invoking Terraform.',
+    }),
+    'change-plan-json-file': Flags.string({
+      required: false,
+      description:
+        'Optional path to pre-generated Terraform plan JSON from `terraform show -json`. Resource changes are stored as graph-level change evidence.',
     }),
   };
 
@@ -74,6 +80,9 @@ export default class DiagramFromDot extends Command {
       : flags['plan-file']
         ? this.loadPlanShowJson(flags['plan-file'])
         : undefined;
+    const changePlanShowJson = flags['change-plan-json-file']
+      ? await readFile(flags['change-plan-json-file'], 'utf8')
+      : undefined;
 
     const importer = new TerraformDotImporter();
     const importedGraph = importer.fromString(dot);
@@ -82,6 +91,7 @@ export default class DiagramFromDot extends Command {
         importedGraph,
         planShowJson,
         (message) => this.warn(message),
+        changePlanShowJson,
       );
 
     await this.createRenderService().render({

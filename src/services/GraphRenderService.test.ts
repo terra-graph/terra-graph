@@ -1,11 +1,14 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { asNodeId } from '@terra-graph/core/Graph/TgGraph.js';
+import {
+  TG_SCHEMA_VERSION,
+  asNodeId,
+} from '@terra-graph/core/Graph/TgGraph.js';
 import { GraphRenderService } from './GraphRenderService.js';
 
 const baseGraph = {
-  schemaVersion: '1.0.0',
+  schemaVersion: TG_SCHEMA_VERSION,
   nodes: {
     n1: {
       id: asNodeId('n1'),

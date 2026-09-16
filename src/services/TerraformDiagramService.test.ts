@@ -1,8 +1,11 @@
-import { asNodeId } from '@terra-graph/core/Graph/TgGraph.js';
+import {
+  TG_SCHEMA_VERSION,
+  asNodeId,
+} from '@terra-graph/core/Graph/TgGraph.js';
 import { TerraformDiagramService } from './TerraformDiagramService.js';
 
 const baseGraph = {
-  schemaVersion: '1.0.0',
+  schemaVersion: TG_SCHEMA_VERSION,
   nodes: {
     n1: {
       id: asNodeId('n1'),
@@ -69,6 +72,85 @@ describe('TerraformDiagramService.run', () => {
     expect(renderService.render).toHaveBeenCalledWith(
       expect.objectContaining({
         tgGraph: decoratedGraph,
+      }),
+    );
+  });
+
+  it('shoud apply change plan evidence after topology decoration and pass metadata to render', async () => {
+    const importer = {
+      fromString: jest.fn().mockReturnValue(baseGraph),
+    };
+    const planDecoratedGraph = {
+      ...baseGraph,
+      description: {
+        decorated: 'yes',
+      },
+    };
+    const changeDecoratedGraph = {
+      ...planDecoratedGraph,
+      changes: {
+        source: 'terraform_plan',
+        resources: {},
+      },
+    };
+    const planDecorator = {
+      decorate: jest.fn().mockReturnValue(planDecoratedGraph),
+    };
+    const changesDecorator = {
+      decorate: jest.fn().mockReturnValue(changeDecoratedGraph),
+    };
+    const renderService = {
+      render: jest.fn().mockResolvedValue(undefined),
+    };
+    const terraformGraphService = {
+      runDiagram: jest.fn().mockReturnValue({
+        dot: 'digraph {}',
+        planShowJson: '{"planned_values":{"root_module":{"resources":[]}}}',
+      }),
+    };
+    const metadata = {
+      environment: {
+        name: 'prod',
+      },
+    };
+
+    const service = new TerraformDiagramService(
+      importer as never,
+      renderService as never,
+      terraformGraphService as never,
+      async () => planDecorator as never,
+      async () => changesDecorator as never,
+    );
+
+    await service.run({
+      argv: ['--profile', 'x'],
+      flags: {
+        verbose: false,
+        continueOnError: false,
+      },
+      usePlan: true,
+      changePlanShowJson: '{"resource_changes":[]}',
+      metadata,
+      skipCleanup: false,
+      log: jest.fn(),
+      warn: jest.fn(),
+      fail: ((error: Error | string) => {
+        throw error;
+      }) as never,
+    });
+
+    expect(planDecorator.decorate).toHaveBeenCalledWith(
+      baseGraph,
+      '{"planned_values":{"root_module":{"resources":[]}}}',
+    );
+    expect(changesDecorator.decorate).toHaveBeenCalledWith(
+      planDecoratedGraph,
+      '{"resource_changes":[]}',
+    );
+    expect(renderService.render).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tgGraph: changeDecoratedGraph,
+        metadata,
       }),
     );
   });

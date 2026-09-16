@@ -17,6 +17,11 @@ import {
   defaultRuntimeCatalog,
   defaultRuntimeProvider,
 } from '../config/runtime.js';
+import {
+  TERRA_GRAPH_CLI_VERSION,
+  TERRA_GRAPH_CORE_VERSION,
+} from '../version.js';
+import type { TgGraphMetadata } from './TopologyMetadataBuilder.js';
 
 export type RenderCommandFlags = {
   verbose: boolean;
@@ -39,6 +44,10 @@ type RuntimeRenderOutputConfig = {
   transformers?: string[];
   writer: string;
   writerOptions?: Record<string, unknown>;
+};
+
+type TopologyGraph = TgGraph & {
+  metadata?: TgGraphMetadata;
 };
 
 export const sharedRenderFlags = {
@@ -71,9 +80,10 @@ export const stripTransformerOptionFlags = (argv: string[]): string[] => {
 };
 
 export type GraphRenderRequest = {
-  tgGraph: TgGraph;
+  tgGraph: TopologyGraph;
   argv: string[];
   flags: RenderCommandFlags;
+  metadata?: TgGraphMetadata;
   log: (message: string) => void;
   fail: (error: Error | string) => never;
 };
@@ -93,6 +103,7 @@ export class GraphRenderService {
     let catalog: RuntimeCatalog = defaultRuntimeCatalog;
     let runtimeRunProfile: string | undefined;
     let runtimeRunOutputs: RuntimeRenderOutputConfig[] | undefined;
+    let runtimeRunMetadata: TgGraphMetadata | undefined;
 
     if (request.flags.runtimeConfigFile) {
       const runtimeConfigLoader = new RuntimeConfigLoader({
@@ -104,6 +115,9 @@ export class GraphRenderService {
       catalog = loaded.catalog;
       runtimeRunProfile = loaded.config.run?.profile;
       runtimeRunOutputs = loaded.config.run?.outputs;
+      runtimeRunMetadata = (
+        loaded.config.run as { metadata?: TgGraphMetadata } | undefined
+      )?.metadata;
     }
 
     const profileName = request.flags.profile ?? runtimeRunProfile;
@@ -114,6 +128,20 @@ export class GraphRenderService {
     }
 
     const profile = catalog.resolveProfile(profileName);
+    const catalogWithMetadata = catalog as RuntimeCatalog & {
+      resolveProfileMetadata?: (name: string) => TgGraphMetadata | undefined;
+    };
+    const tgGraph = this.withMetadata(request.tgGraph, [
+      catalogWithMetadata.resolveProfileMetadata?.(profileName),
+      runtimeRunMetadata,
+      request.metadata,
+      {
+        tool: {
+          terraGraphCliVersion: TERRA_GRAPH_CLI_VERSION,
+          terraGraphCoreVersion: TERRA_GRAPH_CORE_VERSION,
+        },
+      },
+    ]);
     const adapter = this.resolveAdapter(profile, profileName);
     const resolver = new GraphResolver(adapter, {
       errorHandler: this.errorFactory(
@@ -124,7 +152,7 @@ export class GraphRenderService {
     });
 
     const resolved = await this.resolveGraph(resolver, {
-      graph: request.tgGraph,
+      graph: tgGraph,
       phases: catalog.resolveProfilePhases(profileName),
     });
 
@@ -245,6 +273,100 @@ export class GraphRenderService {
     value: unknown,
   ): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  private withMetadata(
+    graph: TopologyGraph,
+    metadataSources: Array<TgGraphMetadata | undefined>,
+  ): TopologyGraph {
+    const metadata = metadataSources.reduce<TgGraphMetadata | undefined>(
+      (acc, item) => GraphRenderService.mergeMetadata(acc, item),
+      graph.metadata,
+    );
+
+    if (!metadata) {
+      return graph;
+    }
+
+    return {
+      ...graph,
+      metadata,
+    };
+  }
+
+  private static mergeMetadata(
+    base?: TgGraphMetadata,
+    override?: TgGraphMetadata,
+  ): TgGraphMetadata | undefined {
+    if (!base) {
+      return override;
+    }
+    if (!override) {
+      return base;
+    }
+
+    const merged: TgGraphMetadata = {};
+    GraphRenderService.setOptionalRecord(
+      merged,
+      'version',
+      GraphRenderService.mergeOptionalRecord(base.version, override.version),
+    );
+    GraphRenderService.setOptionalRecord(
+      merged,
+      'environment',
+      GraphRenderService.mergeOptionalRecord(
+        base.environment,
+        override.environment,
+      ),
+    );
+    GraphRenderService.setOptionalRecord(
+      merged,
+      'terraform',
+      GraphRenderService.mergeOptionalRecord(
+        base.terraform,
+        override.terraform,
+      ),
+    );
+    GraphRenderService.setOptionalRecord(
+      merged,
+      'source',
+      GraphRenderService.mergeOptionalRecord(base.source, override.source),
+    );
+    GraphRenderService.setOptionalRecord(
+      merged,
+      'labels',
+      GraphRenderService.mergeOptionalRecord(base.labels, override.labels),
+    );
+    GraphRenderService.setOptionalRecord(
+      merged,
+      'tool',
+      GraphRenderService.mergeOptionalRecord(base.tool, override.tool),
+    );
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  }
+
+  private static mergeOptionalRecord<T extends object>(
+    base?: T,
+    override?: T,
+  ): T | undefined {
+    if (!base && !override) {
+      return undefined;
+    }
+    return {
+      ...(base ?? {}),
+      ...(override ?? {}),
+    } as T;
+  }
+
+  private static setOptionalRecord<TKey extends keyof TgGraphMetadata>(
+    metadata: TgGraphMetadata,
+    key: TKey,
+    value: TgGraphMetadata[TKey],
+  ): void {
+    if (!value || Object.keys(value).length === 0) {
+      return;
+    }
+    metadata[key] = value;
   }
 
   private resolveRendererName(

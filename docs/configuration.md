@@ -31,6 +31,33 @@ module.exports = {
 
 ## Configuration Options
 
+### Runtime `metadata`
+
+Runtime config files can attach explicit topology metadata at either profile or run level. Run metadata overrides profile metadata, and CLI `--metadata-*` flags override both. Labels are shallow-merged.
+
+```yaml
+profiles:
+  aws.dataflow:
+    metadata:
+      environment:
+        name: prod
+      labels:
+        team: platform
+
+run:
+  profile: aws.dataflow
+  metadata:
+    version:
+      id: build-123
+      parentId: build-122
+    terraform:
+      workspace: default
+    source:
+      ref: refs/heads/main
+      commit: abc123
+      repository: git@example.com:org/repo.git
+```
+
 ### `description`
 
 `Object` - `string`: `string` pairs that will be printed in a box in the bottom left of the diagram.

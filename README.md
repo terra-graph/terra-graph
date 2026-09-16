@@ -55,14 +55,14 @@ The runtime config controls `run.outputs`, including renderer and writer selecti
 terra-graph [command] --help
 ```
 
-## Recommended Terraform-first flow using `terra-graph diagram`
+## Recommended Terraform-first flow using `terra-graph topology`
 
 In most projects you will be using a state file of some kind to manage the changes in your infrastructure. What `terraform graph` actually does is generat a graph of what actions it needs to complete (and in what order). Unless you are running `terra-graph` on brand new infrastructure it won't generate an accurate diagram as it will be using the diff of what new changes are needed. You also will likely have custom backend configuration (that might require credentials etc) for your terraform state.
 
-To overcome this, `terra-graph` provides a command that runs a no-backend Terraform init and then attempts a best-effort plan-decorated render.
+To overcome this, `terra-graph` provides a command that runs a no-backend Terraform init and then attempts a best-effort plan-decorated render. This produces a full desired topology from Terraform code without needing access to the project's real backend.
 
 ```bash
-terra-graph diagram --profile edf.aws.dot --runtimeConfigFile ./terra-graph.runtime.yml
+terra-graph topology --profile edf.aws.dot --runtimeConfigFile ./terra-graph.runtime.yml
 ```
 
 This runs:
@@ -75,17 +75,30 @@ By default `terra-graph` runs Terraform with `TF_DATA_DIR` in an OS temp workspa
 
 If plan/show fails (for example provider/data-source credential constraints), it falls back to plain `terraform graph` and still renders.
 
-If you want graph-only mode (no plan/show step):
+CI systems can also attach explicit version/source metadata and a normal Terraform change plan generated against the real state:
 
 ```bash
-terra-graph diagram --no-plan --profile edf.aws.dot --runtimeConfigFile ./terra-graph.runtime.yml
+terraform plan -out tfplan
+terraform show -json tfplan > plan.json
+
+terra-graph topology \
+  --change-plan-json-file ./plan.json \
+  --metadata-version "$BUILD_ID" \
+  --metadata-parent-version "$PREVIOUS_BUILD_ID" \
+  --metadata-environment prod \
+  --metadata-terraform-workspace default \
+  --metadata-source-ref "$GIT_REF" \
+  --metadata-source-commit "$GIT_SHA" \
+  --runtimeConfigFile ./terra-graph.runtime.yml
 ```
+
+Change plan data is stored as graph-level evidence and does not add synthetic resources to the canonical topology nodes.
 
 ## Quick Start Use
 
 ```bash
-# generate the graph from terraform and render in one command
-terra-graph diagram --profile edf.aws.dot --runtimeConfigFile ./terra-graph.runtime.yml
+# generate the full topology from terraform and render in one command
+terra-graph topology --profile edf.aws.dot --runtimeConfigFile ./terra-graph.runtime.yml
 ```
 
 Or more simply:
