@@ -4,7 +4,6 @@ describe('TopologyMetadataBuilder.build', () => {
   it('shoud build graph metadata from explicit CLI-style inputs', () => {
     const metadata = new TopologyMetadataBuilder().build({
       version: 'run-2',
-      parentVersion: 'run-1',
       environment: 'prod',
       terraformWorkspace: 'default',
       sourceRef: 'refs/heads/main',
@@ -16,7 +15,6 @@ describe('TopologyMetadataBuilder.build', () => {
     expect(metadata).toStrictEqual({
       version: {
         id: 'run-2',
-        parentId: 'run-1',
       },
       environment: {
         name: 'prod',

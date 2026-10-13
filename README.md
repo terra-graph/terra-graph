@@ -84,7 +84,6 @@ terraform show -json tfplan > plan.json
 terra-graph topology \
   --change-plan-json-file ./plan.json \
   --metadata-version "$BUILD_ID" \
-  --metadata-parent-version "$PREVIOUS_BUILD_ID" \
   --metadata-environment prod \
   --metadata-terraform-workspace default \
   --metadata-source-ref "$GIT_REF" \

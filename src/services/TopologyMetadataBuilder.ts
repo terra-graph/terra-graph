@@ -1,7 +1,6 @@
 export type TgGraphMetadata = {
   version?: {
     id?: string;
-    parentId?: string;
   };
   environment?: {
     name?: string;
@@ -23,7 +22,6 @@ export type TgGraphMetadata = {
 
 export type TopologyMetadataInput = {
   version?: string;
-  parentVersion?: string;
   environment?: string;
   terraformWorkspace?: string;
   sourceRef?: string;
@@ -37,10 +35,9 @@ export class TopologyMetadataBuilder {
     const labels = this.parseLabels(input.labels ?? []);
     const metadata: TgGraphMetadata = {};
 
-    if (input.version || input.parentVersion) {
+    if (input.version) {
       metadata.version = {
         ...(input.version ? { id: input.version } : {}),
-        ...(input.parentVersion ? { parentId: input.parentVersion } : {}),
       };
     }
     if (input.environment) {

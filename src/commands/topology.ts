@@ -39,10 +39,6 @@ export default class Topology extends Command {
       required: false,
       description: 'Explicit TerraGraph topology version id',
     }),
-    'metadata-parent-version': Flags.string({
-      required: false,
-      description: 'Explicit parent TerraGraph topology version id',
-    }),
     'metadata-environment': Flags.string({
       required: false,
       description: 'Deployment environment name for the topology metadata',
@@ -86,7 +82,6 @@ export default class Topology extends Command {
     const terraformDir = this.resolveTerraformDir(flags['terraform-dir']);
     const metadata = this.createMetadataBuilder().build({
       version: flags['metadata-version'],
-      parentVersion: flags['metadata-parent-version'],
       environment: flags['metadata-environment'],
       terraformWorkspace: flags['metadata-terraform-workspace'],
       sourceRef: flags['metadata-source-ref'],

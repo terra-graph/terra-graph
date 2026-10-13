@@ -62,7 +62,7 @@ describe('GraphRenderService.render', () => {
       expect(rendererSpy).toHaveBeenCalledWith(
         'json',
         expect.anything(),
-        expect.objectContaining({ projectId }),
+        expect.objectContaining({ projectId, profileName: 'base' }),
       );
     } finally {
       rendererSpy.mockRestore();

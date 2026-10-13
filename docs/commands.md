@@ -91,8 +91,7 @@ Generate and render a full Terraform topology with optional change evidence
 ```
 USAGE
   $ terra-graph topology [--verbose] [--continueOnError] [--runtimeConfigFile <value>] [--profile <value>]
-    [--terraform-dir <value>] [--change-plan-json-file <value>] [--metadata-version <value>] [--metadata-parent-version
-    <value>] [--metadata-environment <value>] [--metadata-terraform-workspace <value>] [--metadata-source-ref <value>]
+    [--terraform-dir <value>] [--change-plan-json-file <value>] [--metadata-version <value>] [--metadata-environment <value>] [--metadata-terraform-workspace <value>] [--metadata-source-ref <value>]
     [--metadata-source-commit <value>] [--metadata-source-repository <value>] [--metadata-label <value>...]
 
 FLAGS
@@ -102,7 +101,6 @@ FLAGS
                                           is encountered
   --metadata-environment=<value>          Deployment environment name for the topology metadata
   --metadata-label=<value>...             Additional metadata label in key=value format; may be provided multiple times
-  --metadata-parent-version=<value>       Explicit parent TerraGraph topology version id
   --metadata-source-commit=<value>        Source control commit for the topology metadata
   --metadata-source-ref=<value>           Source control ref for the topology metadata
   --metadata-source-repository=<value>    Source repository for the topology metadata

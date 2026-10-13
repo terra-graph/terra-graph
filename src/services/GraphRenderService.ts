@@ -177,12 +177,13 @@ export class GraphRenderService {
       );
       const rendererOptions = this.resolveRendererOptions(
         profileRendererOptions,
-        request.flags['project-id']
-          ? {
-              ...outputPlan.rendererOptions,
-              projectId: request.flags['project-id'],
-            }
-          : outputPlan.rendererOptions,
+        {
+          ...outputPlan.rendererOptions,
+          profileName,
+          ...(request.flags['project-id']
+            ? { projectId: request.flags['project-id'] }
+            : {}),
+        },
       );
       const renderKey = this.buildRenderKey(
         resolvedRendererName,
