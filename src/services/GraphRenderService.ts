@@ -28,6 +28,7 @@ export type RenderCommandFlags = {
   continueOnError: boolean;
   runtimeConfigFile?: string;
   profile?: string;
+  'project-id'?: string;
 };
 
 type RenderOutputPlan = {
@@ -51,6 +52,11 @@ type TopologyGraph = TgGraph & {
 };
 
 export const sharedRenderFlags = {
+  'project-id': Flags.string({
+    required: false,
+    description:
+      'Cloud project UUID passed to renderers (overrides options.projectId)',
+  }),
   verbose: Flags.boolean({
     required: false,
     default: false,
@@ -171,7 +177,12 @@ export class GraphRenderService {
       );
       const rendererOptions = this.resolveRendererOptions(
         profileRendererOptions,
-        outputPlan.rendererOptions,
+        request.flags['project-id']
+          ? {
+              ...outputPlan.rendererOptions,
+              projectId: request.flags['project-id'],
+            }
+          : outputPlan.rendererOptions,
       );
       const renderKey = this.buildRenderKey(
         resolvedRendererName,

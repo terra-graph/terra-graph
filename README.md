@@ -113,3 +113,5 @@ terraform graph | terra-graph diagram:from-dot --profile edf.aws.dot --runtimeCo
 - [Hooks](./docs/hooks.md) - how to modify the diagram and filter elements using hooks, when and where to use them.
   - [Matchers](./docs/matchers.md) - built-in node matchers, how to write custom matchers. Matchers are used to identify elements in the graph to either filter or modify.
 - [All terra-graph Commands](./docs/commands.md) - a list of all `terra-graph` commands
+
+Cloud-associated imports can pass `--project-id <UUID>` to `diagram`, `diagram:from-dot`, or `topology`. The flag overrides `projectId` in renderer options without adding cloud identity to canonical graph metadata.

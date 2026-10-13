@@ -5,6 +5,7 @@ import {
   TG_SCHEMA_VERSION,
   asNodeId,
 } from '@terra-graph/core/Graph/TgGraph.js';
+import { RuntimeCatalog } from '@terra-graph/core/Runtime/RuntimeCatalog.js';
 import { GraphRenderService } from './GraphRenderService.js';
 
 const baseGraph = {
@@ -23,6 +24,52 @@ const throwFail = (error: Error | string): never => {
 };
 
 describe('GraphRenderService.render', () => {
+  it('shoud pass the CLI project ID to renderers over the configured project ID', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'project-render-'));
+    const runtimeConfigPath = join(dir, 'runtime.json');
+    const projectId = '11111111-1111-4111-8111-111111111111';
+    const rendererSpy = jest.spyOn(RuntimeCatalog.prototype, 'resolveRenderer');
+    await writeFile(
+      runtimeConfigPath,
+      JSON.stringify({
+        profiles: { base: { phases: [] } },
+        run: {
+          profile: 'base',
+          outputs: [
+            {
+              renderer: 'json',
+              options: { projectId: 'configured-id' },
+              writer: 'file',
+              writerOptions: { target: join(dir, 'graph.json') },
+            },
+          ],
+        },
+      }),
+    );
+    try {
+      await new GraphRenderService().render({
+        tgGraph: baseGraph,
+        argv: [],
+        flags: {
+          verbose: false,
+          continueOnError: false,
+          runtimeConfigFile: runtimeConfigPath,
+          'project-id': projectId,
+        },
+        log: jest.fn(),
+        fail: throwFail,
+      });
+      expect(rendererSpy).toHaveBeenCalledWith(
+        'json',
+        expect.anything(),
+        expect.objectContaining({ projectId }),
+      );
+    } finally {
+      rendererSpy.mockRestore();
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it('renders through the built-in file writer using writerOptions.target', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'graph-render-service-'));
     const runtimeConfigPath = join(dir, 'runtime.json');
