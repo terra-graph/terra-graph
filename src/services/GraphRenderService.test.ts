@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { JsonRenderer } from '@terra-graph/core/Graph/Renderers/JsonRenderer.js';
 import {
   TG_SCHEMA_VERSION,
   asNodeId,
@@ -28,6 +29,7 @@ describe('GraphRenderService.render', () => {
     const dir = await mkdtemp(join(tmpdir(), 'project-render-'));
     const runtimeConfigPath = join(dir, 'runtime.json');
     const projectId = '11111111-1111-4111-8111-111111111111';
+    const executionSpy = jest.spyOn(JsonRenderer.prototype, 'render');
     const rendererSpy = jest.spyOn(RuntimeCatalog.prototype, 'resolveRenderer');
     await writeFile(
       runtimeConfigPath,
@@ -64,7 +66,18 @@ describe('GraphRenderService.render', () => {
         expect.anything(),
         expect.objectContaining({ projectId, profileName: 'base' }),
       );
+      expect(executionSpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          profileName: 'base',
+          phases: [],
+          dependencies: expect.arrayContaining([
+            expect.objectContaining({ name: '@terra-graph/core' }),
+          ]),
+        }),
+      );
     } finally {
+      executionSpy.mockRestore();
       rendererSpy.mockRestore();
       await rm(dir, { recursive: true, force: true });
     }
@@ -171,6 +184,10 @@ describe('GraphRenderService.render', () => {
 
   it('shoud include rule failure causes in failed render errors', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'graph-render-service-'));
+    await writeFile(
+      join(dir, 'package.json'),
+      JSON.stringify({ name: 'test-provider', version: '1.0.0' }),
+    );
     const providerPath = join(dir, 'provider.cjs');
     const runtimeConfigPath = join(dir, 'runtime.json');
     const coreModulePath = JSON.stringify(
@@ -265,6 +282,10 @@ module.exports = () => ({
 
   it('loads external renderers and writers from runtime providers', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'graph-render-service-'));
+    await writeFile(
+      join(dir, 'package.json'),
+      JSON.stringify({ name: 'test-provider', version: '1.0.0' }),
+    );
     const providerPath = join(dir, 'provider.cjs');
     const runtimeConfigPath = join(dir, 'runtime.json');
     const target = join(dir, 'external.json');

@@ -10,6 +10,7 @@ import { ArtifactTransformerFactory } from '@terra-graph/core/Output/ArtifactTra
 import { DefaultArtifactTransformerFactory } from '@terra-graph/core/Output/ArtifactTransformerFactory/DefaultArtifactTransformerFactory.js';
 import { OclifTransformerFlagParser } from '@terra-graph/core/Output/ArtifactTransformerFactory/OclifTransformerFlagParser.js';
 import { RenderPipeline } from '@terra-graph/core/Output/RenderPipeline.js';
+import { ProfileExecutionDescriptorBuilder } from '@terra-graph/core/Runtime/ProfileExecutionDescriptor/ProfileExecutionDescriptorBuilder.js';
 import { RuntimeCatalog } from '@terra-graph/core/Runtime/RuntimeCatalog.js';
 import { RuntimeConfigLoader } from '@terra-graph/core/Runtime/RuntimeConfigLoader.js';
 import { FileRuntimeConfigSource } from '@terra-graph/core/Runtime/RuntimeConfigSource/FileRuntimeConfigSource.js';
@@ -107,6 +108,7 @@ export class GraphRenderService {
     );
 
     let catalog: RuntimeCatalog = defaultRuntimeCatalog;
+    let dependencies: { name: string; version: string }[] = [];
     let runtimeRunProfile: string | undefined;
     let runtimeRunOutputs: RuntimeRenderOutputConfig[] | undefined;
     let runtimeRunMetadata: TgGraphMetadata | undefined;
@@ -119,6 +121,7 @@ export class GraphRenderService {
         source: new FileRuntimeConfigSource(request.flags.runtimeConfigFile),
       });
       catalog = loaded.catalog;
+      dependencies = loaded.dependencies;
       runtimeRunProfile = loaded.config.run?.profile;
       runtimeRunOutputs = loaded.config.run?.outputs;
       runtimeRunMetadata = (
@@ -157,9 +160,10 @@ export class GraphRenderService {
       logger: this.loggerFactory(request.flags.verbose, request.log),
     });
 
+    const phases = catalog.resolveProfilePhases(profileName);
     const resolved = await this.resolveGraph(resolver, {
       graph: tgGraph,
-      phases: catalog.resolveProfilePhases(profileName),
+      phases,
     });
 
     const profileRendererOptions =
@@ -202,7 +206,17 @@ export class GraphRenderService {
               rendererOptions as Record<string, unknown> | undefined,
             );
 
-        artifact = renderer.render(resolved);
+        artifact = renderer.render(
+          resolved,
+          new ProfileExecutionDescriptorBuilder().build(profile, phases, [
+            ...dependencies,
+            {
+              name: '@terra-graph/terra-graph',
+              version: TERRA_GRAPH_CLI_VERSION,
+            },
+            { name: '@terra-graph/core', version: TERRA_GRAPH_CORE_VERSION },
+          ]),
+        );
         renderedArtifactByRenderer.set(renderKey, artifact);
       }
 
