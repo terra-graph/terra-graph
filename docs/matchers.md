@@ -1,5 +1,7 @@
 # Matchers
 
+> Historical documentation for the earlier JavaScript configuration system. For this checkout, use [runtime configuration](configuration.md), provider plugins, phase rules, and the query DSL. These examples are not current API guidance.
+
 Matchers are used by both `NodeFilter` and `NodeModifier` hook types. They identify nodes in the graph that you wish to either filter out or modify in some way.
 
 A basic matcher is a function that looks like this:
@@ -14,7 +16,7 @@ It accepts 3 args:
 
 - `nodeName` the node name in the graph - this is the full terraform resource name
 - `node` a `Node` object that contains additional properties describing the node. This is in fact a `Graphviz` node as per the [Graphviz docs](https://graphviz.org/docs/nodes/)
-- `graph` this is the full current state of the graph. It is a [`Graph`](../src/Graph/Graph.ts) object which is an extension of the `graphlib-dot` package `Graph` object.
+- `graph` this is the full current state of the graph. It is a ``Graph`` (historical source: `../src/Graph/Graph.ts`) object which is an extension of the `graphlib-dot` package `Graph` object.
 
 The full type definition of the `NodeMatcher` is this:
 

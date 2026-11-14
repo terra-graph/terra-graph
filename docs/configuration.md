@@ -1,35 +1,39 @@
-# Configuration
+# Runtime configuration
 
-Configuration is done using javascript (or compiled typescript) files. The configuration file you wish to use can be passed with the `--configFile` (`-c`) flag:
+Current commands load JSON or YAML runtime configuration with `--runtimeConfigFile`. Select a profile with `--profile`, or set `run.profile` in the file; the CLI flag takes precedence. Without a runtime file, only built-in providers are available. There is no automatic `terra-graph.js` discovery in this implementation.
 
-```bash
-terra-graph --configFile=myconfig.js
+```sh
+terra-graph diagram --terraform-dir ./infra --runtimeConfigFile ./terra-graph.runtime.yml
+terra-graph diagram:from-dot --dot-input ./graph.dot --runtimeConfigFile ./terra-graph.runtime.yml
 ```
 
-By default if you do not specify a config file terra-graph will look for a file called `terra-graph.js` in the directory you are executing it.
+## Providers, profiles, and execution
 
-The configuration schema is as follows
+- `providers` loads installed runtime provider packages or local provider modules. Provider packages supply named profiles, rules, rule sets, plugins, and output capabilities.
+- `profiles` defines named profiles. Profiles can compose other profiles with `usesProfiles` and configure plugins, phases, rendering, and metadata.
+- Phase entries select `pre`, `main`, `projection`, or `final` and contain serialized rules, named rule references, or named rule-set references.
+- `run.profile` selects the profile; `run.outputs` selects renderers, transformations, writers, and destinations.
+- Resolve provider references using their registered names. Keep serializable configuration separate from provider implementation code.
 
-```javascript
-module.exports = {
-  description: { // optional
-    //key: "value", // any key: string pair
-  },
-  graph: {
-    rankdir: "LR", // optional (default: "LR")
-    // key: "value"
-  },
-  hooks: { // optional lifecycle hooks (see below)
-    'meta.before': [], // apply filters to graph before meta data is applied to nodes
-    'meta.apply': [], // decorate nodes / graph after meta data is applied to nodes
-    'graph.filter': [], // filter nodes before final decoration of graph (meta data is available to use to filter)
-    'graph.decorate': [], // final graph decoration before rending
-  },
-  plugins: [] // optional array of plugins (see below)
-};
+For example, when the conventions packages are installed:
+
+```yaml
+providers:
+  - '@terra-graph/conventions-core'
+  - '@terra-graph/conventions-aws'
+
+run:
+  profile: '@terra-graph/conventions-aws:profile:base.dataflow'
+  outputs:
+    - renderer: json
+      writer: file
+      writerOptions:
+        target: ./graph.tggraph.json
 ```
 
-## Configuration Options
+See the provider package documentation for its exported profile IDs. Built-in parsers accept `.json`, `.yaml`, and `.yml` files. Configurations are validated before profile execution.
+
+## Metadata
 
 ### Runtime `metadata`
 
@@ -49,7 +53,6 @@ run:
   metadata:
     version:
       id: build-123
-      parentId: build-122
     terraform:
       workspace: default
     source:
@@ -58,127 +61,10 @@ run:
       repository: git@example.com:org/repo.git
 ```
 
-### `description`
+## Cloud project association
 
-`Object` - `string`: `string` pairs that will be printed in a box in the bottom left of the diagram.
+`--project-id <UUID>` overrides renderer `options.projectId` for cloud-associated imports. Cloud project identity is not added to canonical graph metadata. The cloud importer owns snapshot UUIDs and profile-version digests.
 
-#### Example
+## Historical configuration
 
-```javascript
-module.exports = {
-  description: {
-    Author: "Kevin Baldwyn",
-    Created: new Date().toISOString(), // you can use any javascript you like to create the value
-    'Signed Off By': 'Big Boss Man' // encompass non-valid js object keys with quotes
-  }
-}
-```
-
-### `graph`
-
-`Object` - any options available from the `graphviz` `Graph` options listed [here](https://graphviz.org/docs/graph/)
-
-#### Example
-
-```javascript
-module.exports = {
-  graph: {
-    pad: 5, // increase the whitespace around the diagram
-    concentrate: true // if a node has more than one "in" edge try and concentrate them into one edge (potentially makes it more readable in the case of lots of edges)
-  }
-}
-```
-
-### `hooks`
-
-`Object` - each key is a specific lifecycle hook with an `Array` of either [`NodeFilter`](../src/Nodes/Filter.ts) or [`NodeModifier`](../src/Nodes/Modifier.ts).
-
-See the [hooks documentation](./hooks.md) for more details. Each lifecycle key is optional.
-
-#### Example
-
-```javascript
-const { Matcher } = TerraGraph;
-
-module.exports = {
-  hooks: {
-    // remove all `aws_cloudwatch_log_group` resources from the diagram
-    'graph.filter': [{
-        match: Matcher.node.resourceEquals(['aws_cloudwatch_log_group']),
-        remove: true,
-      },
-    ],
-  }
-}
-```
-
-### `plugins`
-
-`Array` - an array of functions that return a set of hooks.
-
-Plugins are a useful way of combining a group of hooks together to achieve a specific result. For example styling or filtering resources generated by a specific module or setting specific display properties / rules for a subset of related resources.
-
-The [`aws/S3`](../src/Graph/Plugins/aws/S3.ts) plugin removes nodes that are not `aws_s3_bucket`, `aws_s3_bucket_notification` and re-creates all edge relationships to any other resources so they point to these instead. It also turns some nodes into edge labels and does some are things. Each of these steps needs to happen in a different lifcycle hook. Using a plugin makes it easy to manage this in one place.
-
-### Example (taken from the aws/S3 Plugin)
-
-```javascript
-const { removeNodeAndRedirectRelationships, nodeToEdgeLabel } = TerraGraph;
-
-const S3Plugin = () => ({
-  'meta.apply': [
-    removeNodeAndRedirectRelationships((nodeName, node) => {
-      return (
-        node.meta!.resource.startsWith('aws_s3_') &&
-        !['aws_s3_bucket', 'aws_s3_bucket_notification'].includes(
-          node.meta!.resource,
-        )
-      );
-    })
-  ],
-  'graph.decorate': [
-    nodeToEdgeLabel(
-      Matcher.node.resourceEquals(['aws_s3_bucket_notification']),
-    )
-  ],
-});
-
-module.exports = {
-  plugins: [
-    S3Plugin, // make sure not to call the plugin - just reference it
-  ]
-}
-```
-
-## A note on imports
-
-The configuration files used to configure it's behaviour are fully featured javascript files with access to many of `terra-graphs` internal modules.
-
-Becuase `terra-graph` is designed to be used as a standalone cli tool it's unlikely that it will be included as part of a package.json / other javascript / node project. This means the configuration files do not have access to import the modules exported by `terra-graph` (such as plugins and matchers) in the normal way (ie through an `import` statement).
-
-To overcome this and make it easy to simply write standalone configuration files that can live anywhere (ie alongside your terraform) `terra-graph` exposes a global namespace `TerraGraph` that can be used to access it's core features.
-
-```javascript
-// TerraGraph is a global variable exposed internally to terra-graph which means when the cionfiguration is loaded it has access to these properties
-const { Hook, extend, ApiGateway, S3, defaultConfig } = TerraGraph;
-
-modules.exports = {
-  plugins: [ApiGateway, S3],
-  hooks: extend(defaultConfig.hooks, {
-    [Hook.META_BEFORE]: []
-  }
-};
-```
-
-If you are using `terrag-graph` as part of a normal javascript project and it is added to your package.json file then you can do this as normal however for most use-cases it's not possible.
-
-```javascript
-import { Hook, extend, ApiGateway, S3, defaultConfig } from 'terra-graph';
-
-export default {
-  plugins: [ApiGateway, S3],
-  hooks: extend(defaultConfig.hooks, {
-    [Hook.META_BEFORE]: []
-  }
-};
-```
+Earlier CLI documentation described `--configFile`, JavaScript globals named `TerraGraph`, and hooks such as `meta.before` and `graph.filter`. Those mechanisms are historical and are not the runtime configuration contract of this checkout. Use provider plugins, phase rules, and the query DSL for current extensions.

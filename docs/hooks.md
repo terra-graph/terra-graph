@@ -1,5 +1,7 @@
 # Hooks
 
+> Historical documentation for the earlier JavaScript configuration system. For this checkout, use [runtime configuration](configuration.md), provider plugins, phase rules, and the query DSL. These examples are not current API guidance.
+
 `terra-graph` works by taking the output of `terraform graph` which is in the `dot` language format and applying a set of filters and modifiers to the graph. The output of `terraform graph` can be very verbose and will include all `local`, `var`, and `data` resources (for every module you use as well) so we use hooks (and plugins) to manipulate the graph before it's pased to `graphviz` to render the result.
 
 Hooks are predefined "lifecycle" events that allow different filters and modifiers to be applied at different times. The purpose of each hook is outlined below.
@@ -140,7 +142,7 @@ The primary hook for modifying nodes and the graph. As with `graph.filter` this 
 
 `terra-graph` applies a set of immutable built-in hooks by default. The behaviour of these hooks cannot be changed, they will always be the first hooks applied for each lifecycle stage. Their purpose is predominantly to apply meta data and filter noise from the initial graph.
 
-You can see them [here](../src/config/hooks.core.ts).
+You can see them `here` (historical source: `../src/config/hooks.core.ts`).
 
 ## Hook Configuration
 
@@ -161,7 +163,7 @@ module.exports = {
 
 ### Overriding and extending the default hook configuration
 
-If you do not create a config file `terra-graph` will use some default hook configuration as defined [here](../src/config/config.default.ts).
+If you do not create a config file `terra-graph` will use some default hook configuration as defined `here` (historical source: `../src/config/config.default.ts`).
 
 You can either choose to completely override this by creating your own configuration file OR you can use the `extend` function to extend from these hooks in your own configuration (reccomended):
 
@@ -179,4 +181,4 @@ module.exports {
 
 ## Pre-built hooks
 
-There are a number of pre-built and configurable hooks [available](../src/Graph/Hooks/).
+There are a number of pre-built and configurable hooks `available` (historical source: `../src/Graph/Hooks/`).
