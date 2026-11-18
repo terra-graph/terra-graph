@@ -10,8 +10,8 @@ Generate and render a Terraform diagram in one command
 
 ```
 USAGE
-  $ terra-graph diagram [--verbose] [--continueOnError] [--runtimeConfigFile <value>] [--profile <value>]
-    [--no-plan] [--graph-only] [--terraform-dir <value>] [--plan-file <value>] [--skip-cleanup]
+  $ terra-graph diagram [--project-id <value>] [--verbose] [--continueOnError] [--runtimeConfigFile <value>]
+    [--profile <value>] [--no-plan] [--graph-only] [--terraform-dir <value>] [--plan-file <value>] [--skip-cleanup]
 
 FLAGS
   --continueOnError            Continue to process graph and attenmpt to generate a diagram even if an error is
@@ -20,6 +20,7 @@ FLAGS
   --no-plan                    Skip plan/show decoration and render from terraform graph only
   --plan-file=<value>          Optional custom path for Terraform plan artifact; defaults to an OS temp location
   --profile=<value>            Profile name to resolve from the runtime catalog (overrides runtime config run.profile)
+  --project-id=<value>         Cloud project UUID passed to renderers (overrides options.projectId)
   --runtimeConfigFile=<value>  Runtime config path (.json/.yaml/.yml) used to load profiles/rules/rule sets
   --skip-cleanup               Keep generated Terraform temp workspace after execution
   --terraform-dir=<value>      Path to the Terraform project directory (defaults to current working directory)
@@ -48,8 +49,9 @@ Render a diagram from Terraform DOT input
 
 ```
 USAGE
-  $ terra-graph diagram:from-dot [--verbose] [--continueOnError] [--runtimeConfigFile <value>] [--profile <value>]
-    [--dot-input <value>] [--plan-file <value>] [--plan-json-file <value>] [--change-plan-json-file <value>]
+  $ terra-graph diagram:from-dot [--project-id <value>] [--verbose] [--continueOnError] [--runtimeConfigFile <value>]
+    [--profile <value>] [--dot-input <value>] [--plan-file <value>] [--plan-json-file <value>] [--change-plan-json-file
+    <value>]
 
 FLAGS
   --change-plan-json-file=<value>  Optional path to pre-generated Terraform plan JSON from `terraform show -json`.
@@ -64,6 +66,7 @@ FLAGS
                                    Terraform.
   --profile=<value>                Profile name to resolve from the runtime catalog (overrides runtime config
                                    run.profile)
+  --project-id=<value>             Cloud project UUID passed to renderers (overrides options.projectId)
   --runtimeConfigFile=<value>      Runtime config path (.json/.yaml/.yml) used to load profiles/rules/rule sets
   --verbose                        Print detailed outoput of each hook and filter applied to the graph
 
@@ -90,8 +93,9 @@ Generate and render a full Terraform topology with optional change evidence
 
 ```
 USAGE
-  $ terra-graph topology [--verbose] [--continueOnError] [--runtimeConfigFile <value>] [--profile <value>]
-    [--terraform-dir <value>] [--change-plan-json-file <value>] [--metadata-version <value>] [--metadata-environment <value>] [--metadata-terraform-workspace <value>] [--metadata-source-ref <value>]
+  $ terra-graph topology [--project-id <value>] [--verbose] [--continueOnError] [--runtimeConfigFile <value>]
+    [--profile <value>] [--terraform-dir <value>] [--change-plan-json-file <value>] [--metadata-version <value>]
+    [--metadata-environment <value>] [--metadata-terraform-workspace <value>] [--metadata-source-ref <value>]
     [--metadata-source-commit <value>] [--metadata-source-repository <value>] [--metadata-label <value>...]
 
 FLAGS
@@ -108,6 +112,7 @@ FLAGS
   --metadata-version=<value>              Explicit TerraGraph topology version id
   --profile=<value>                       Profile name to resolve from the runtime catalog (overrides runtime config
                                           run.profile)
+  --project-id=<value>                    Cloud project UUID passed to renderers (overrides options.projectId)
   --runtimeConfigFile=<value>             Runtime config path (.json/.yaml/.yml) used to load profiles/rules/rule sets
   --terraform-dir=<value>                 Path to the Terraform project directory (defaults to current working
                                           directory)
