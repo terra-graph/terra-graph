@@ -13,7 +13,28 @@ permissions:
   pull-requests: write
 
 jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+      - run: corepack enable
+      - run: yarn install --frozen-lockfile
+      - run: yarn verify
+
   release-npm:
+    needs: verify
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
     name: Release to NPM
     runs-on: ubuntu-latest
     steps:
@@ -21,14 +42,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-      - name: Validate
-        run: |
-          yarn lint:ci
-      - name: Build
-        run: |
-          yarn build:ci
+      - name: Build verified revision
+        run: yarn build
       - name: Update command docs
         run: yarn oclif:readme
       - name: Commit changes
@@ -36,8 +61,9 @@ jobs:
         with:
           file_pattern: 'docs/commands.md'
           commit_message: 'docs(auto): Update docs/commands.md'
+      - name: Verify release revision
+        run: yarn verify
       - name: Semantic Release
-        run: npx semantic-release
+        run: yarn exec semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
