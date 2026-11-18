@@ -30,9 +30,9 @@ After successful verification, select npm Publishing access → Require two-fact
 `@terra-graph/terra-graph` needs an initial publication before its trusted publisher can be configured. From a clean, reviewed release commit on `rc/v1`:
 
 1. Select the documented Node version, enable Corepack, and install dependencies.
-2. Run `yarn lint:ci`, `yarn test`, `yarn build:ci`, and `yarn oclif:readme`. Commit any generated command documentation and rerun checks as needed.
-3. Confirm `package.json` still names `@terra-graph/terra-graph` at `0.1.0`; inspect `yarn exec -- npm pack --dry-run`.
-4. Authenticate interactively with `npm login`, then run `yarn exec -- npm publish --access public --tag rc/v1`, completing npm's 2FA prompt.
+2. Run `yarn verify`, then `yarn oclif:readme`. Verification cleans stale build output and checks the installed CLI executable. Commit any generated command documentation and rerun verification as needed.
+3. Confirm `package.json` still names `@terra-graph/terra-graph` at `0.1.0`; inspect `./node_modules/.bin/npm pack --dry-run`. Confirm the package includes `bin/run.js` and excludes compiled test files.
+4. Use the repository-pinned npm directly, outside Yarn: authenticate with `./node_modules/.bin/npm login --registry=https://registry.npmjs.org/`, then run `./node_modules/.bin/npm publish --registry=https://registry.npmjs.org/ --access public --tag rc/v1`, completing npm's 2FA prompt. Explicitly selecting the npm registry avoids Yarn's registry override and ensures login and publication use the same host.
 5. Only after successful publication, create `git tag v0.1.0` on that exact commit and push it with `git push origin v0.1.0`. If publication succeeded but tagging failed, repair the tag rather than publishing the same version again.
 6. Configure trusted publishing as above. Verify the next release-worthy change publishes through OIDC; the initial local bootstrap has no CI provenance.
 

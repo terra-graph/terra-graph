@@ -19,7 +19,8 @@
     "./docs/commands.md"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "build": "node -e \"require('node:fs').rmSync('dist', {recursive: true, force: true})\" && yarn build:ci",
@@ -49,19 +50,19 @@
     "graphology-types": "^0.24.8",
     "jest": "^30.2.0",
     "jest-mock-extended": "^4.0.0",
+    "npm": "11.21.2",
     "oclif": "^4.17.10",
     "semantic-release": "25.0.9",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5.7.2",
-    "npm": "11.21.2"
+    "typescript": "^5.7.2"
   },
   "dependencies": {
     "@oclif/core": "^4.0.34",
     "@terra-graph/core": "1.0.0"
   },
   "bin": {
-    "terra-graph": "./bin/run.js"
+    "terra-graph": "bin/run.js"
   },
   "oclif": {
     "bin": "terra-graph",
