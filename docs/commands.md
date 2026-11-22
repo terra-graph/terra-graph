@@ -41,7 +41,7 @@ EXAMPLES
   $ terra-graph diagram --plan-file ./my-debug.tfplan --skip-cleanup --runtimeConfigFile ./my-config.yml
 ```
 
-_See code: [src/commands/diagram.ts](https://github.com/terra-graph/terra-graph/blob/v0.1.0/src/commands/diagram.ts)_
+_See code: [src/commands/diagram.ts](https://github.com/terra-graph/terra-graph/blob/v1.0.0/src/commands/diagram.ts)_
 
 ## `terra-graph diagram:from-dot`
 
@@ -85,7 +85,7 @@ EXAMPLES
   terraform graph | terra-graph diagram:from-dot --runtimeConfigFile ./my-config.yml --transformer-dotcli-format png
 ```
 
-_See code: [src/commands/diagram/from-dot.ts](https://github.com/terra-graph/terra-graph/blob/v0.1.0/src/commands/diagram/from-dot.ts)_
+_See code: [src/commands/diagram/from-dot.ts](https://github.com/terra-graph/terra-graph/blob/v1.0.0/src/commands/diagram/from-dot.ts)_
 
 ## `terra-graph topology`
 
@@ -131,5 +131,5 @@ EXAMPLES
   $ terra-graph topology --metadata-label team=platform --metadata-label service=payments --runtimeConfigFile ./my-config.yml
 ```
 
-_See code: [src/commands/topology.ts](https://github.com/terra-graph/terra-graph/blob/v0.1.0/src/commands/topology.ts)_
+_See code: [src/commands/topology.ts](https://github.com/terra-graph/terra-graph/blob/v1.0.0/src/commands/topology.ts)_
 <!-- commandsstop -->
